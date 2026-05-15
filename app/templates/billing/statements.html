@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row align-items-center mb-4">
+    <div class="col-md-8">
+        <h2 class="fw-bold"><i class="bi bi-receipt-cutoff text-success"></i> Billing Statements</h2>
+        <p class="text-white-50 mb-0">View dynamically calculated, timestamp-mapped grid usage invoices.</p>
+    </div>
+    <div class="col-md-4 text-md-end mt-3 mt-md-0">
+        <form action="{{ url_for('billing.generate_bill') }}" method="POST">
+            <button type="submit" class="btn btn-outline-success rounded-pill px-4">
+                <i class="bi bi-arrow-repeat"></i> Generate Latest Bill
+            </button>
+        </form>
+    </div>
+</div>
+
+<div class="card card-glass p-0 border-0">
+    <div class="p-3 bg-dark bg-opacity-50 border-bottom border-secondary">
+        <h5 class="mb-0 fw-bold">Statement History</h5>
+    </div>
+    <div class="p-3">
+        <div class="table-responsive">
+            <table class="table table-dark table-hover table-borderless align-middle">
+                <thead>
+                    <tr class="text-white-50 border-bottom border-secondary">
+                        <th>Statement Period</th>
+                        <th>Net Consumption</th>
+                        <th>Amount Due</th>
+                        <th>Due Date</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for bill in bills %}
+                    <tr>
+                        <td class="fw-bold text-info">Month {{ bill.billing_month }}, {{ bill.billing_year }}</td>
+                        <td>{{ bill.total_kwh|round(2) }} kWh</td>
+                        <td class="fw-bold text-success">₹{{ bill.total_amount|round(2) }}</td>
+                        <td>{{ bill.due_date.strftime('%b %d, %Y') }}</td>
+                        <td>
+                            {% if bill.status == 'PAID' %}
+                                <span class="badge bg-success">PAID</span>
+                            {% else %}
+                                <span class="badge bg-danger">UNPAID</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="{{ url_for('billing.view_bill', id=bill.id) }}" class="btn btn-sm btn-outline-light rounded-pill"><i class="bi bi-eye"></i> View</a>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="text-center text-white-50 py-5">
+                            <i class="bi bi-file-earmark-bar-graph fs-1 d-block mb-3 opacity-50"></i>
+                            <p class="mb-0">You have no recorded statements.</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <div class="card card-glass p-4 border-0">
+            <div class="text-center mb-4 border-bottom border-secondary pb-3">
+                <h3 class="fw-bold text-warning"><i class="bi bi-broadcast"></i> Create DR Event</h3>
+                <p class="text-white-50">Initiate a Demand Response network shift.</p>
+            </div>
+            
+            <form method="POST" action="">
+                {{ form.hidden_tag() }}
+                
+                <div class="mb-3">
+                    {{ form.zone_id.label(class="form-label fw-bold text-info") }}
+                    {{ form.zone_id(class="form-select form-control-glass border-info") }}
+                    <div class="form-text text-white-50">Event will be rigidly locked to avoid overlaps in this zone.</div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        {{ form.target_reduction.label(class="form-label") }}
+                        {% if form.target_reduction.errors %}
+                            {{ form.target_reduction(class="form-control form-control-glass is-invalid", placeholder="%") }}
+                            <div class="invalid-feedback">{% for error in form.target_reduction.errors %}<span>{{ error }}</span>{% endfor %}</div>
+                        {% else %}
+                            {{ form.target_reduction(class="form-control form-control-glass", placeholder="%") }}
+                        {% endif %}
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        {{ form.incentive.label(class="form-label") }}
+                        {% if form.incentive.errors %}
+                            {{ form.incentive(class="form-control form-control-glass is-invalid", placeholder="₹") }}
+                            <div class="invalid-feedback">{% for error in form.incentive.errors %}<span>{{ error }}</span>{% endfor %}</div>
+                        {% else %}
+                            {{ form.incentive(class="form-control form-control-glass", placeholder="₹") }}
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    {{ form.event_date.label(class="form-label") }}
+                    {% if form.event_date.errors %}
+                        {{ form.event_date(class="form-control form-control-glass is-invalid", type="date") }}
+                        <div class="invalid-feedback">{% for error in form.event_date.errors %}<span>{{ error }}</span>{% endfor %}</div>
+                    {% else %}
+                        {{ form.event_date(class="form-control form-control-glass", type="date") }}
+                    {% endif %}
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        {{ form.start_time.label(class="form-label") }}
+                        {% if form.start_time.errors %}
+                            {{ form.start_time(class="form-control form-control-glass is-invalid", type="time") }}
+                            <div class="invalid-feedback">{% for error in form.start_time.errors %}<span>{{ error }}</span>{% endfor %}</div>
+                        {% else %}
+                            {{ form.start_time(class="form-control form-control-glass", type="time") }}
+                        {% endif %}
+                    </div>
+                    <div class="col-md-6 mb-4">
+                        {{ form.end_time.label(class="form-label") }}
+                        {% if form.end_time.errors %}
+                            {{ form.end_time(class="form-control form-control-glass is-invalid", type="time") }}
+                            <div class="invalid-feedback">
+                                {% for error in form.end_time.errors %}
+                                    <span>{{ error }}</span>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            {{ form.end_time(class="form-control form-control-glass", type="time") }}
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="d-flex justify-content-between mt-4">
+                    <a href="{{ url_for('demand_response.events_list') }}" class="btn btn-outline-secondary">Cancel</a>
+                    {{ form.submit(class="btn btn-warning px-4 text-dark fw-bold") }}
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row align-items-center mb-4">
+    <div class="col-md-8">
+        <h2 class="fw-bold"><i class="bi bi-piggy-bank text-success"></i> DR Programs</h2>
+        <p class="text-white-50 mb-0">Opt-in to reduce loads and earn incentives</p>
+    </div>
+</div>
+
+<div class="row">
+    {% for event in events %}
+    {% set est_savings = ((event.baseline_kwh or 0) * (event.target_reduction / 100) * event.incentive) | round(2) %}
+    <div class="col-md-6 col-lg-4 mb-4">
+        <div class="card card-glass p-0 border-0 h-100 position-relative {% if event.id in enrollments %}border-success{% endif %}">
+            <div class="p-3 bg-dark bg-opacity-50 border-bottom border-secondary d-flex justify-content-between">
+                <h5 class="fw-bold mb-0 text-white">{{ event.event_start.strftime('%b %d') }}</h5>
+                {% if event.status == 'ACTIVE' %}
+                    <span class="badge bg-danger pulse-badge">ACTIVE NOW</span>
+                {% elif event.status == 'COMPLETED' %}
+                    <span class="badge bg-success">Completed</span>
+                {% else %}
+                    <span class="badge bg-secondary">Scheduled</span>
+                {% endif %}
+            </div>
+            <div class="p-4 flex-grow-1">
+                <h4 class="text-success fw-bold mb-1">Earn ₹{{ event.incentive }}/kWh</h4>
+                {% if est_savings > 0 %}
+                <p class="text-warning small mb-3">
+                    <i class="bi bi-calculator"></i> Estimated Earnings: <strong>₹{{ est_savings }}</strong>
+                    <br><span class="text-white-50">(Based on your zone's avg {{ event.baseline_kwh | round(1) }} kWh baseline × {{ event.target_reduction }}% reduction)</span>
+                </p>
+                {% else %}
+                <p class="text-white-50 small mb-3">Upload consumption data to see your personalized earnings estimate.</p>
+                {% endif %}
+                <div class="mb-2"><i class="bi bi-clock text-info"></i> {{ event.event_start.strftime('%H:%M') }} - {{ event.event_end.strftime('%H:%M') }}</div>
+                <div class="mb-3"><i class="bi bi-graph-down text-warning"></i> Target Reduction: {{ event.target_reduction }}%</div>
+                
+                {% if event.id in enrollments %}
+                    <div class="alert alert-success bg-transparent border-success p-2 text-center mb-0">
+                        <i class="bi bi-check-circle-fill"></i> You are enrolled
+                    </div>
+                {% else %}
+                    <p class="text-white-50 small mb-0">Opt-in to participate in this grid balancing event.</p>
+                {% endif %}
+            </div>
+            <div class="p-3 border-top border-secondary">
+                {% if event.id in enrollments %}
+                    <form action="{{ url_for('demand_response.optout', event_id=event.id) }}" method="POST">
+                        <button type="submit" class="btn btn-outline-danger w-100 rounded-pill">Opt Out</button>
+                    </form>
+                {% else %}
+                    <!-- Trigger modal instead of direct POST -->
+                    <button type="button" class="btn btn-success w-100 rounded-pill fw-bold"
+                            data-bs-toggle="modal"
+                            data-bs-target="#enrollModal{{ event.id }}">
+                        <i class="bi bi-lightning-charge-fill"></i> Enroll Now
+                    </button>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirmation Modal for event {{ event.id }} -->
+    {% if event.id not in enrollments %}
+    <div class="modal fade" id="enrollModal{{ event.id }}" tabindex="-1" aria-labelledby="enrollModalLabel{{ event.id }}" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content bg-dark border border-secondary">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title fw-bold" id="enrollModalLabel{{ event.id }}">
+                        <i class="bi bi-lightning-charge text-warning"></i> Confirm Enrolment
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-white-50">You are about to opt-in to the following demand-response event:</p>
+                    <ul class="list-unstyled">
+                        <li><i class="bi bi-calendar text-info me-2"></i> <strong>Date:</strong> {{ event.event_start.strftime('%d %b %Y') }}</li>
+                        <li><i class="bi bi-clock text-info me-2"></i> <strong>Time:</strong> {{ event.event_start.strftime('%H:%M') }} – {{ event.event_end.strftime('%H:%M') }}</li>
+                        <li><i class="bi bi-graph-down text-warning me-2"></i> <strong>Target Reduction:</strong> {{ event.target_reduction }}%</li>
+                        <li><i class="bi bi-currency-rupee text-success me-2"></i> <strong>Rate:</strong> ₹{{ event.incentive }}/kWh saved</li>
+                        {% if est_savings > 0 %}
+                        <li class="mt-2"><i class="bi bi-trophy text-warning me-2"></i> <strong>Your Estimated Earnings: ₹{{ est_savings }}</strong></li>
+                        {% endif %}
+                    </ul>
+                    <div class="alert alert-warning bg-transparent border-warning p-2 small mt-3">
+                        <i class="bi bi-exclamation-triangle"></i> By enrolling, you commit to reducing your consumption during this window.
+                    </div>
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <form action="{{ url_for('demand_response.enroll', event_id=event.id) }}" method="POST" class="d-inline">
+                        <button type="submit" class="btn btn-success fw-bold px-4">
+                            <i class="bi bi-check-lg"></i> Yes, Enroll Me
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% else %}
+    <div class="col-12 text-center py-5">
+        <i class="bi bi-calendar2-x display-1 text-white-50 opacity-25"></i>
+        <h4 class="text-white-50 mt-3">No DR Events scheduled in your zone currently.</h4>
+    </div>
+    {% endfor %}
+</div>
+
+<style>
+.border-success { border: 1px solid rgba(34, 197, 94, 0.5) !important; }
+.pulse-badge { animation: pulse 2s infinite; }
+@keyframes pulse {
+    0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+    70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+    100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+</style>
+{% endblock %}
+

@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <a href="{{ url_for('billing.statements') }}" class="btn btn-outline-light rounded-pill"><i class="bi bi-arrow-left"></i> Back</a>
+            <button onclick="window.print()" class="btn btn-primary rounded-pill"><i class="bi bi-printer"></i> Print Statement</button>
+        </div>
+
+        <div id="printable-invoice" class="card card-glass border-0 bg-dark text-white p-5">
+            <div class="d-flex justify-content-between align-items-start border-bottom border-secondary pb-4 mb-4">
+                <div>
+                    <h2 class="fw-bold m-0 text-info"><i class="bi bi-lightning-charge-fill"></i> EnergyWatch</h2>
+                    <p class="text-white-50 m-0 mt-1">Smart Grid Utility Statement</p>
+                </div>
+                <div class="text-end">
+                    <h4 class="fw-bold m-0 text-white">INVOICE #{{ bill.id }}</h4>
+                    <p class="text-white-50 m-0">Generated: {{ bill.generated_on.strftime('%Y-%m-%d') }}</p>
+                </div>
+            </div>
+
+            <div class="row mb-5">
+                <div class="col-sm-6">
+                    <h6 class="text-white-50 mb-2">Billed To:</h6>
+                    <h5 class="fw-bold text-white m-0">{{ current_user.profile.full_name }}</h5>
+                    <p class="m-0 text-white-50">{{ current_user.profile.address }}</p>
+                    <p class="m-0 text-info font-monospace">Meter ID: {{ current_user.profile.meter_id }}</p>
+                </div>
+                <div class="col-sm-6 text-sm-end mt-4 mt-sm-0">
+                    <h6 class="text-white-50 mb-2">Billing Period:</h6>
+                    <h5 class="fw-bold text-white m-0">{{ month_str }} {{ bill.billing_year }}</h5>
+                </div>
+            </div>
+
+            <div class="table-responsive mb-5">
+                <table class="table table-dark table-borderless table-striped">
+                    <thead class="border-bottom border-secondary">
+                        <tr class="text-white-50">
+                            <th>Description</th>
+                            <th class="text-end">Net Usage</th>
+                            <th class="text-end">Amount (INR)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Variable Consumption (Mapped against Dynamic Peak/Off-Peak Tiers)</td>
+                            <td class="text-end font-monospace">{{ bill.total_kwh|round(2) }} kWh</td>
+                            <td class="text-end font-monospace">₹{{ (bill.total_amount - 200)|round(2) }}</td>
+                        </tr>
+                        <tr>
+                            <td>Base Grid Connection & Service Fee</td>
+                            <td class="text-end">-</td>
+                            <td class="text-end font-monospace">₹200.00</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="row justify-content-end border-top border-secondary pt-4">
+                <div class="col-sm-6 col-md-5">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-white-50">Subtotal:</span>
+                        <span class="font-monospace">₹{{ bill.total_amount|round(2) }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-3 border-bottom border-secondary pb-2">
+                        <span class="text-white-50">Taxes & Fees:</span>
+                        <span class="font-monospace">₹0.00</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <span class="text-white fs-5 fw-bold">TOTAL DUE:</span>
+                        <span class="text-success fs-3 fw-bold font-monospace">₹{{ bill.total_amount|round(2) }}</span>
+                    </div>
+                    {% if bill.status == 'UNPAID' %}
+                        <div class="p-3 bg-danger bg-opacity-10 border border-danger text-center rounded">
+                            <h6 class="text-danger m-0 fw-bold"><i class="bi bi-exclamation-circle-fill"></i> REQUIRES PAYMENT</h6>
+                            <p class="m-0 small text-white-50 mt-1">Due by: {{ bill.due_date.strftime('%B %d, %Y') }}</p>
+                        </div>
+                    {% else %}
+                        <div class="p-3 bg-success bg-opacity-10 border border-success text-center rounded">
+                            <h6 class="text-success m-0 fw-bold"><i class="bi bi-check-circle-fill"></i> FULLY PAID</h6>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="text-center mt-5 pt-3 border-top border-secondary text-white-50 small">
+                <p>Thank you for using EnergyWatch Grid Systems.<br>Automate your appliances during localized off-peak hours to reduce this bill further.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+@media print {
+    body * { visibility: hidden; }
+    #printable-invoice, #printable-invoice * { visibility: visible; }
+    #printable-invoice { position: absolute; left: 0; top: 0; width: 100%; border: none !important; }
+    .btn, .navbar { display: none !important; }
+}
+</style>
+{% endblock %}

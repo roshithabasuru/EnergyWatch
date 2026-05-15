@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row align-items-center mb-4">
+    <div class="col-md-8">
+        <h2 class="fw-bold"><i class="bi bi-clock-history text-primary"></i> Automations & Alerts</h2>
+        <p class="text-white-50 mb-0">Schedule loads during off-peak hours and monitor threshold bursts.</p>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Appliance Scheduling -->
+    <div class="col-lg-7 mb-4">
+        <div class="card card-glass p-0 border-0 h-100">
+            <div class="p-3 bg-dark bg-opacity-50 border-bottom border-secondary d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 fw-bold"><i class="bi bi-lightning-charge text-warning"></i> Appliance Load Schedules</h5>
+                <button class="btn btn-sm btn-primary rounded-pill" data-bs-toggle="collapse" data-bs-target="#newScheduleForm"><i class="bi bi-plus-lg"></i> New</button>
+            </div>
+            
+            <div class="collapse bg-black bg-opacity-25" id="newScheduleForm">
+                <div class="p-3 border-bottom border-secondary">
+                    <form action="{{ url_for('schedules.new_schedule') }}" method="POST">
+                        {{ schedule_form.hidden_tag() }}
+                        <div class="row g-2 mb-3">
+                            <div class="col-md-6">
+                                {{ schedule_form.appliance_type.label(class="form-label small text-white-50") }}
+                                {{ schedule_form.appliance_type(class="form-select form-select-sm form-control-glass", id="applianceTypeDropdown") }}
+                            </div>
+                            <div class="col-md-6" id="customNameContainer" style="display: none;">
+                                {{ schedule_form.custom_name.label(class="form-label small text-white-50") }}
+                                {{ schedule_form.custom_name(class="form-control form-control-sm form-control-glass", placeholder="e.g. Server Rack") }}
+                            </div>
+                        </div>
+                        <div class="row g-2 mb-3">
+                            <div class="col-md-6">
+                                {{ schedule_form.start_time.label(class="form-label small text-white-50") }}
+                                {{ schedule_form.start_time(class="form-control form-control-sm form-control-glass") }}
+                            </div>
+                            <div class="col-md-6">
+                                {{ schedule_form.end_time.label(class="form-label small text-white-50") }}
+                                {{ schedule_form.end_time(class="form-control form-control-sm form-control-glass") }}
+                            </div>
+                        </div>
+                        <div class="form-text text-danger small mb-2"><i class="bi bi-exclamation-triangle"></i> Scheduling across Peak Pricing (e.g., 6PM-10PM) will be automatically rejected.</div>
+                        <button type="submit" class="btn btn-sm btn-success">Save Schedule</button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="p-3">
+                <div class="list-group list-group-flush bg-transparent">
+                    {% for schedule in schedules %}
+                    <div class="list-group-item bg-transparent text-white border-secondary px-0 py-3 d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="mb-1 fw-bold text-info">
+                                {% if schedule.appliance_type == 'Other' %}
+                                    {{ schedule.custom_name }}
+                                {% else %}
+                                    {{ schedule.appliance_type }}
+                                {% endif %}
+                            </h6>
+                            <small class="text-white-50"><i class="bi bi-clock"></i> Daily, {{ schedule.start_time.strftime('%H:%M') }} - {{ schedule.end_time.strftime('%H:%M') }}</small>
+                            
+                            {% set ns = namespace(tier=None) %}
+                            {% for t in pricing_tiers %}
+                                {% if t.start_hour <= t.end_hour %}
+                                    {% if t.start_hour <= schedule.start_time.hour < t.end_hour %}
+                                        {% set ns.tier = t %}
+                                    {% endif %}
+                                {% else %}
+                                    {% if schedule.start_time.hour >= t.start_hour or schedule.start_time.hour < t.end_hour %}
+                                        {% set ns.tier = t %}
+                                    {% endif %}
+                                {% endif %}
+                            {% endfor %}
+                            {% if ns.tier %}
+                                <span class="badge ms-2 bg-{% if 'peak' in ns.tier.name.lower() and 'off' not in ns.tier.name.lower() %}danger{% elif 'shoulder' in ns.tier.name.lower() %}warning{% else %}success{% endif %}">
+                                    {{ ns.tier.name }} Tier
+                                </span>
+                            {% endif %}
+                        </div>
+                        <form action="{{ url_for('schedules.delete_schedule', schedule_id=schedule.id) }}" method="POST">
+                            <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                        </form>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4 text-white-50">
+                        <i class="bi bi-calendar-minus fs-2 mb-2 d-block"></i>
+                        <p class="mb-0">You have no active schedules.</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Threshold Alerts -->
+    <div class="col-lg-5 mb-4">
+        <div class="card card-glass p-0 border-0 h-100">
+            <div class="p-3 bg-dark bg-opacity-50 border-bottom border-secondary">
+                <h5 class="mb-0 fw-bold"><i class="bi bi-bell-fill text-danger"></i> Alert Configurations</h5>
+            </div>
+            
+            <div class="p-4">
+                {% if not alerts %}
+                    <div class="alert bg-dark border-secondary text-white-50 mb-4">
+                        <i class="bi bi-info-circle text-info"></i> Protect yourself from anomalous spikes by declaring a Daily Consumption ceiling.
+                    </div>
+                {% else %}
+                    {% for alert in alerts %}
+                        <div class="card bg-black bg-opacity-50 border-{% if alert.is_active %}success{% else %}secondary{% endif %} mb-2">
+                            <div class="card-body d-flex justify-content-between align-items-center py-2">
+                                <div>
+                                    <span class="badge bg-info me-2">{{ alert.rule_type.replace('_THRESHOLD','').title() }}</span>
+                                    <strong class="text-success">{{ alert.threshold_kwh }} kWh</strong>
+                                    <small class="text-white-50 ms-1">cap ({{ 'active' if alert.is_active else 'paused' }})</small>
+                                </div>
+                                <form action="{{ url_for('schedules.toggle_alert', alert_id=alert.id) }}" method="POST">
+                                    {% if alert.is_active %}
+                                        <button type="submit" class="btn btn-sm btn-outline-warning">Pause</button>
+                                    {% else %}
+                                        <button type="submit" class="btn btn-sm btn-outline-success">Enable</button>
+                                    {% endif %}
+                                </form>
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+
+                <form action="{{ url_for('schedules.new_alert') }}" method="POST">
+                    {{ alert_form.hidden_tag() }}
+                    <h6 class="text-white-50 border-bottom border-secondary pb-2 mb-3">Add / Update Alert Rule</h6>
+                    <div class="mb-3">
+                        {{ alert_form.rule_type.label(class="form-label small text-white-50") }}
+                        {{ alert_form.rule_type(class="form-select form-control-glass") }}
+                    </div>
+                    <div class="input-group mb-3">
+                        {{ alert_form.threshold_kwh(class="form-control form-control-glass", placeholder="e.g. 50") }}
+                        <span class="input-group-text bg-dark border-secondary text-white-50">kWh</span>
+                    </div>
+                    {{ alert_form.submit(class="btn btn-danger w-100 fw-bold") }}
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const dropdown = document.getElementById('applianceTypeDropdown');
+    const container = document.getElementById('customNameContainer');
+    
+    if(dropdown && container) {
+        dropdown.addEventListener('change', function() {
+            container.style.display = this.value === 'Other' ? 'block' : 'none';
+        });
+    }
+});
+</script>
+{% endblock %}

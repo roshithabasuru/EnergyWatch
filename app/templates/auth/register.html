@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <div class="card card-glass p-4 border-0">
+            <div class="text-center mb-4">
+                <i class="bi bi-person-plus fs-1 text-primary"></i>
+                <h2 class="fw-bold mt-2">Create an Account</h2>
+                <p class="text-white-50">Join EnergyWatch to monitor your savings</p>
+            </div>
+            
+            <form method="POST" action="">
+                {{ form.hidden_tag() }}
+                
+                <div class="mb-3">
+                    {{ form.email.label(class="form-label") }}
+                    {% if form.email.errors %}
+                        {{ form.email(class="form-control form-control-glass is-invalid") }}
+                        <div class="invalid-feedback">
+                            {% for error in form.email.errors %}
+                                <span>{{ error }}</span>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        {{ form.email(class="form-control form-control-glass") }}
+                    {% endif %}
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        {{ form.password.label(class="form-label") }}
+                        {% if form.password.errors %}
+                            {{ form.password(class="form-control form-control-glass is-invalid") }}
+                            <div class="invalid-feedback">
+                                {% for error in form.password.errors %}
+                                    <span>{{ error }}</span>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            {{ form.password(class="form-control form-control-glass") }}
+                        {% endif %}
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        {{ form.confirm_password.label(class="form-label") }}
+                        {% if form.confirm_password.errors %}
+                            {{ form.confirm_password(class="form-control form-control-glass is-invalid") }}
+                            <div class="invalid-feedback">
+                                {% for error in form.confirm_password.errors %}
+                                    <span>{{ error }}</span>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            {{ form.confirm_password(class="form-control form-control-glass") }}
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    {{ form.meter_id.label(class="form-label") }}
+                    {% if form.meter_id.errors %}
+                        {{ form.meter_id(class="form-control form-control-glass is-invalid", placeholder="e.g. MTR1234567") }}
+                        <div class="invalid-feedback">
+                            {% for error in form.meter_id.errors %}
+                                <span>{{ error }}</span>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        {{ form.meter_id(class="form-control form-control-glass", placeholder="e.g. MTR1234567") }}
+                    {% endif %}
+                    <div class="form-text text-white-50"><i class="bi bi-info-circle"></i> Found on your utility bill</div>
+                </div>
+                
+                <div class="d-grid">
+                    {{ form.submit(class="btn btn-gradient btn-lg py-2") }}
+                </div>
+            </form>
+            
+            <div class="text-center mt-4 text-white-50">
+                <p>Already have an account? <a href="{{ url_for('auth.login') }}" class="text-primary text-decoration-none fw-bold">Login</a></p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

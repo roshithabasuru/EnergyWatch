@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row mb-4 align-items-center">
+    <div class="col-md-8">
+        <h2 class="fw-bold"><i class="bi bi-shield-lock text-warning"></i> Security & Audit Logs</h2>
+        <p class="text-white-50">Tracking highly-sensitive modifications across the platform.</p>
+    </div>
+</div>
+
+<div class="card card-glass p-0 border-0 overflow-hidden">
+    <div class="table-responsive">
+        <table class="table table-dark table-hover table-borderless m-0 align-middle">
+            <thead class="border-bottom border-secondary text-white-50">
+                <tr>
+                    <th class="ps-4">Timestamp (UTC)</th>
+                    <th>User ID</th>
+                    <th>Action</th>
+                    <th>Resource</th>
+                    <th>Details</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in logs %}
+                <tr>
+                    <td class="ps-4"><span class="badge bg-secondary rounded-pill">{{ log.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</span></td>
+                    <td class="font-monospace text-info">#{{ log.user_id }}</td>
+                    <td class="fw-bold">{{ log.action }}</td>
+                    <td>{{ log.resource_type }} #{{ log.resource_id or 'N/A' }}</td>
+                    <td class="text-white-50 small">{{ log.details or '-' }}</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="5" class="py-4 text-center text-white-50">No audit logs recorded yet.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

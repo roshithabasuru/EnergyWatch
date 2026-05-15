@@ -1,0 +1,257 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <h2 class="fw-bold"><i class="bi bi-shield-lock text-warning"></i> Operator Dashboard</h2>
+        <p class="text-white-50">Manage Grid Topology and Dynamic Pricing Structures</p>
+    </div>
+</div>
+
+<div class="row mb-4 g-3">
+    <div class="col-md-3">
+        <div class="card card-glass p-3 border-0 h-100">
+            <h6 class="text-white-50 mb-1"><i class="bi bi-people text-info"></i> Total Consumers</h6>
+            <h2 class="fw-bold m-0">{{ total_consumers }}</h2>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card card-glass p-3 border-0 h-100">
+            <h6 class="text-white-50 mb-1"><i class="bi bi-lightning-charge text-success"></i> Active DR Events</h6>
+            <h2 class="fw-bold m-0 text-success">{{ active_events }}</h2>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card card-glass p-3 border-0 h-100">
+            <h6 class="text-white-50 mb-1"><i class="bi bi-bar-chart-fill text-warning"></i> Est. Grid Load</h6>
+            <h2 class="fw-bold m-0 text-warning">{{ grid_load_mw }} <small class="fs-6 text-white-50">MW</small></h2>
+            <small class="text-white-50">Avg over last 24h</small>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card card-glass p-3 border-0 h-100">
+            <h6 class="text-white-50 mb-1"><i class="bi bi-people-fill text-primary"></i> DR Participation</h6>
+            <h2 class="fw-bold m-0 text-primary">{{ participation_rate }}<small class="fs-6 text-white-50">%</small></h2>
+            <small class="text-white-50">Enrolled / Eligible consumers</small>
+        </div>
+    </div>
+</div>
+
+<!-- Export CSV with date range -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card card-glass p-3 border-0">
+            <form class="row g-2 align-items-end" method="GET" action="{{ url_for('operator.export_consumption_csv') }}">
+                <div class="col-md-3">
+                    <label class="form-label small text-white-50">Zone (optional)</label>
+                    <select name="zone_id" class="form-select form-control-glass">
+                        <option value="">All Zones</option>
+                        {% for zone in zones %}
+                        <option value="{{ zone.id }}">{{ zone.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small text-white-50">From Date</label>
+                    <input type="date" name="date_from" class="form-control form-control-glass">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small text-white-50">To Date</label>
+                    <input type="date" name="date_to" class="form-control form-control-glass">
+                </div>
+                <div class="col-md-3">
+                    <button type="submit" class="btn btn-primary rounded-pill w-100 fw-bold">
+                        <i class="bi bi-download me-2"></i>Export CSV
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-lg-8">
+        <div class="card card-glass p-0 border-0">
+            <div class="p-3 bg-dark bg-opacity-50 border-bottom border-secondary d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 fw-bold"><i class="bi bi-activity text-danger"></i> Aggregated Grid Load Curve (30 Days)</h5>
+            </div>
+            <div class="p-4" style="height: 300px;">
+                <canvas id="gridHealthChart"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card card-glass p-0 border-0">
+            <div class="p-3 bg-dark bg-opacity-50 border-bottom border-secondary">
+                <h5 class="mb-0 fw-bold"><i class="bi bi-map text-warning"></i> Zone Heatmap (Last 24h)</h5>
+            </div>
+            <div class="p-4" style="height: 300px;">
+                <canvas id="zoneHeatmapChart"></canvas>
+            </div>
+        </div>
+    </div>
+    </div>
+</div>
+
+<!-- Local Chart.js -->
+<script src="{{ url_for('static', filename='js/chart.min.js') }}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Grid Load Line Chart
+    fetch('{{ url_for("operator.grid_health_data") }}')
+        .then(r => r.json())
+        .then(data => {
+            const ctx = document.getElementById('gridHealthChart');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.labels,
+                    datasets: [{
+                        label: 'Total Grid Load (kWh)',
+                        data: data.data,
+                        borderColor: '#ef4444',
+                        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { labels: { color: '#f8fafc' } } },
+                    scales: {
+                        x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' } },
+                        y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' } }
+                    }
+                }
+            });
+        });
+
+    // Zone Heatmap Bar Chart (lazy-loaded via AJAX)
+    fetch('{{ url_for("operator.zone_heatmap_data") }}')
+        .then(r => r.json())
+        .then(data => {
+            const ctx2 = document.getElementById('zoneHeatmapChart');
+            const colors = data.labels.map((_, i) => `hsl(${(i * 60) % 360}, 80%, 55%)`);
+            new Chart(ctx2, {
+                type: 'bar',
+                data: {
+                    labels: data.labels,
+                    datasets: [{
+                        label: 'Consumption Last 24h (kWh)',
+                        data: data.data,
+                        backgroundColor: colors,
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    indexAxis: 'y',
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { beginAtZero: true, ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+                        y: { ticks: { color: '#f8fafc' }, grid: { display: false } }
+                    }
+                }
+            });
+        });
+});
+</script>
+
+<div class="row">
+    <!-- Zones Table -->
+    <div class="col-lg-6 mb-4">
+        <div class="card card-glass p-0 border-0 h-100">
+            <div class="p-3 bg-dark bg-opacity-50 border-bottom border-secondary d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 fw-bold"><i class="bi bi-geo-alt text-primary"></i> Control Zones</h5>
+                <a href="{{ url_for('operator.new_zone') }}" class="btn btn-sm btn-primary rounded-pill"><i class="bi bi-plus-lg"></i> New Zone</a>
+            </div>
+            <div class="p-3">
+                <div class="table-responsive">
+                    <table class="table table-dark table-hover table-borderless align-middle mb-0">
+                        <thead>
+                            <tr class="text-white-50 border-bottom border-secondary">
+                                <th>Zone ID</th>
+                                <th>Name</th>
+                                <th>Substation</th>
+                                <th>Capacity</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for zone in zones %}
+                            <tr>
+                                <td>#{{ zone.id }}</td>
+                                <td class="fw-bold text-info">{{ zone.name }}</td>
+                                <td>{{ zone.substation }}</td>
+                                <td>{{ zone.capacity_mw }} MW</td>
+                                <td>
+                                    <a href="{{ url_for('operator.edit_zone', id=zone.id) }}" class="btn btn-sm btn-outline-light me-1"><i class="bi bi-pencil"></i></a>
+                                    <form action="{{ url_for('operator.delete_zone', id=zone.id) }}" method="POST" class="d-inline" onsubmit="return confirm('Delete zone {{ zone.name }}?')">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="5" class="text-center text-white-50">No zones configured yet.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pricing Tiers Table -->
+    <div class="col-lg-6 mb-4">
+        <div class="card card-glass p-0 border-0 h-100">
+            <div class="p-3 bg-dark bg-opacity-50 border-bottom border-secondary d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 fw-bold"><i class="bi bi-currency-dollar text-success"></i> Pricing Tiers</h5>
+                <a href="{{ url_for('operator.new_pricing') }}" class="btn btn-sm btn-success rounded-pill"><i class="bi bi-plus-lg"></i> New Tier</a>
+            </div>
+            <div class="p-3">
+                <div class="table-responsive">
+                    <table class="table table-dark table-hover table-borderless align-middle mb-0">
+                        <thead>
+                            <tr class="text-white-50 border-bottom border-secondary">
+                                <th>Tier</th>
+                                <th>Rate (₹)</th>
+                                <th>Start</th>
+                                <th>End</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for tier in pricing %}
+                            <tr>
+                                <td class="fw-bold {% if 'peak' in tier.name.lower() and 'off' not in tier.name.lower() %}text-danger{% elif 'shoulder' in tier.name.lower() %}text-warning{% else %}text-success{% endif %}">
+                                    {{ tier.name }}
+                                </td>
+                                <td>₹{{ tier.rate_per_kwh }}/kWh</td>
+                                <td>{{ tier.start_hour }}:00</td>
+                                <td>{{ tier.end_hour }}:00</td>
+                                <td>
+                                    <small class="text-white-50 d-block" title="Effective Since">{{ tier.effective_date.strftime('%d %b %Y') if tier.effective_date else '—' }}</small>
+                                    <a href="{{ url_for('operator.edit_pricing', id=tier.id) }}" class="btn btn-sm btn-outline-light me-1"><i class="bi bi-pencil"></i></a>
+                                    <form action="{{ url_for('operator.delete_pricing', id=tier.id) }}" method="POST" class="d-inline" onsubmit="return confirm('Deactivate tier {{ tier.name }}?')">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-archive"></i></button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="5" class="text-center text-white-50">No pricing tiers configured yet.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

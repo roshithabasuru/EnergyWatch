@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row align-items-center mb-5" style="min-height: 50vh;">
+    <div class="col-lg-6 mb-5 mb-lg-0 text-center text-lg-start">
+        <h1 class="display-3 fw-bold mb-3"><span class="text-info">Smart Grid</span> Monitoring</h1>
+        <p class="lead text-white-50 mb-4">Empowering consumers and utility operators to balance the energy load, maximize savings, and participate in dynamic demand-response programs.</p>
+        
+        <div class="d-grid d-md-flex gap-3 justify-content-center justify-content-lg-start">
+            {% if not current_user.is_authenticated %}
+                <a href="{{ url_for('auth.register') }}" class="btn btn-gradient btn-lg px-4 rounded-pill">Get Started Today</a>
+                <a href="{{ url_for('auth.login') }}" class="btn btn-outline-light btn-lg px-4 rounded-pill">Consumer Login</a>
+            {% else %}
+                {% if current_user.role == 'CONSUMER' %}
+                    <a href="{{ url_for('consumption.dashboard') }}" class="btn btn-gradient btn-lg px-4 rounded-pill">Go to Dashboard</a>
+                {% endif %}
+            {% endif %}
+        </div>
+    </div>
+    
+    <div class="col-lg-6">
+        <div class="card card-glass p-0 overflow-hidden border-0">
+            <div class="p-4 bg-dark bg-opacity-50 border-bottom border-secondary d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 fw-bold"><i class="bi bi-graph-up-arrow text-success"></i> Real-time Grid Load</h5>
+                <span class="badge bg-success rounded-pill px-3">Stable</span>
+            </div>
+            <div class="p-4 text-center">
+                <i class="bi bi-activity text-info opacity-50" style="font-size: 8rem;"></i>
+                <p class="text-white-50 mt-3">Dynamic system algorithms constantly monitoring substation stability.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mt-5">
+    <div class="col-md-4">
+        <div class="card card-glass p-4 border-0 h-100 text-center">
+            <i class="bi bi-currency-dollar fs-1 text-success mb-3"></i>
+            <h4 class="fw-bold">Dynamic Pricing</h4>
+            <p class="text-white-50">Track time-of-use pricing and shift your consumption to off-peak hours for maximum savings.</p>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card card-glass p-4 border-0 h-100 text-center">
+            <i class="bi bi-bell fs-1 text-warning mb-3"></i>
+            <h4 class="fw-bold">Smart Alerts</h4>
+            <p class="text-white-50">Get notified of peak pricing spikes and approaching consumption thresholds.</p>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card card-glass p-4 border-0 h-100 text-center">
+            <i class="bi bi-plug fs-1 text-primary mb-3"></i>
+            <h4 class="fw-bold">Demand Response</h4>
+            <p class="text-white-50">Opt-in to utility events to earn incentives by reducing load during critical peaks.</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

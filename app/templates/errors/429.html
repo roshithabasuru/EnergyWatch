@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-center" style="min-height: 70vh;">
+    <div class="text-center px-4" style="max-width: 540px;">
+        <div class="mb-4" style="font-size: 6rem; line-height: 1; filter: drop-shadow(0 0 24px rgba(239,68,68,0.5));">
+            🚫
+        </div>
+        <h1 class="fw-bold mb-2" style="font-size: 2.5rem;">Too Many Attempts</h1>
+        <p class="text-white-50 mb-4 fs-5">
+            You've exceeded the maximum number of login attempts
+            <strong class="text-danger">(5 per 15 minutes)</strong>.
+            This is a security measure to protect your account.
+        </p>
+
+        <!-- Countdown Card -->
+        <div class="card card-glass p-4 mb-4 border-0">
+            <p class="text-white-50 mb-2 small">You can try again in</p>
+            <div id="countdown" class="fw-bold mb-0" style="font-size: 3rem; letter-spacing: 4px; color: #38bdf8; font-family: monospace;">
+                15:00
+            </div>
+            <p class="text-white-50 mt-2 small mb-0">Please wait for the timer to finish.</p>
+        </div>
+
+        <!-- Back to Login button - disabled until countdown ends -->
+        <a id="loginBtn" href="{{ url_for('auth.login') }}"
+           class="btn btn-gradient rounded-pill px-5 fw-bold disabled"
+           aria-disabled="true"
+           style="pointer-events: none; opacity: 0.45;">
+            <i class="bi bi-arrow-left me-2"></i> Back to Login
+        </a>
+        <p id="waitMsg" class="text-white-50 small mt-3">Button will unlock when the timer reaches 0:00</p>
+    </div>
+</div>
+
+<script>
+(function () {
+    const WAIT_SECONDS = 15 * 60; // 15 minutes
+    let remaining = WAIT_SECONDS;
+
+    const countdownEl = document.getElementById('countdown');
+    const btnEl = document.getElementById('loginBtn');
+    const msgEl = document.getElementById('waitMsg');
+
+    const tick = setInterval(() => {
+        remaining--;
+
+        const mins = Math.floor(remaining / 60);
+        const secs = remaining % 60;
+        countdownEl.textContent = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+
+        if (remaining <= 30) {
+            countdownEl.style.color = '#f97316'; // orange warning as it gets close
+        }
+
+        if (remaining <= 0) {
+            clearInterval(tick);
+            countdownEl.textContent = '00:00';
+            countdownEl.style.color = '#22c55e'; // green = ready
+
+            // Unlock the button
+            btnEl.classList.remove('disabled');
+            btnEl.removeAttribute('aria-disabled');
+            btnEl.style.pointerEvents = 'auto';
+            btnEl.style.opacity = '1';
+            msgEl.textContent = "✅ You can now try logging in again.";
+            msgEl.style.color = '#86efac';
+        }
+    }, 1000);
+})();
+</script>
+{% endblock %}
+

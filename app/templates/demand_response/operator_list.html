@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col d-flex justify-content-between align-items-center">
+        <div>
+            <h2 class="fw-bold"><i class="bi bi-broadcast text-warning"></i> Demand-Response Events</h2>
+            <p class="text-white-50">Manage grid reduction load schedules</p>
+        </div>
+        <a href="{{ url_for('demand_response.new_event') }}" class="btn btn-warning rounded-pill"><i class="bi bi-plus-lg"></i> Create DR Event</a>
+    </div>
+</div>
+
+<div class="card card-glass p-0 border-0">
+    <div class="p-3 bg-dark bg-opacity-50 border-bottom border-secondary">
+        <h5 class="mb-0 fw-bold">Active & Scheduled Events</h5>
+    </div>
+    <div class="p-3">
+        <div class="table-responsive">
+            <table class="table table-dark table-hover table-borderless align-middle">
+                <thead>
+                    <tr class="text-white-50 border-bottom border-secondary">
+                        <th>Status</th>
+                        <th>Target Zone</th>
+                        <th>Event Window</th>
+                        <th>Reduction Target</th>
+                        <th>Incentive (₹)</th>
+                        <th>Participation</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for event in events %}
+                    <tr>
+                        <td>
+                            {% if event.status == 'SCHEDULED' %}
+                                <span class="badge bg-info">Scheduled</span>
+                            {% elif event.status == 'ACTIVE' %}
+                                <span class="badge bg-success spinner-grow spinner-grow-sm me-1" role="status"></span>
+                                <span class="badge bg-success">Active</span>
+                            {% else %}
+                                <span class="badge bg-secondary">{{ event.status }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="fw-bold text-primary">{{ event.zone.name }}</td>
+                        <td>
+                            <div class="small">
+                                <i class="bi bi-calendar"></i> {{ event.event_start.strftime('%b %d, %Y') }}<br>
+                                <i class="bi bi-clock"></i> {{ event.event_start.strftime('%H:%M') }} - {{ event.event_end.strftime('%H:%M') }}
+                            </div>
+                        </td>
+                        <td>{{ event.target_reduction }}%</td>
+                        <td class="text-success fw-bold">₹{{ event.incentive }}/kWh</td>
+                        <td>
+                            <!-- Counts enrollments where status is ACTIVE -->
+                            {% set count = event.enrollments|selectattr('status', 'equalto', 'ACTIVE')|list|length %}
+                            <span class="badge bg-dark border border-secondary">{{ count }} Users</span>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="text-center text-white-50 py-4">No Demand Response events initialized.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

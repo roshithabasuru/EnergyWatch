@@ -1,0 +1,219 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row align-items-center mb-4">
+    <div class="col-md-8">
+        <h2 class="fw-bold"><i class="bi bi-graph-up-arrow text-info"></i> Analytics Dashboard</h2>
+        <p class="text-white-50 mb-0">Meter ID: <span class="font-monospace text-primary">{{ current_user.profile.meter_id }}</span></p>
+    </div>
+    <div class="col-md-4 text-md-end mt-3 mt-md-0 d-flex gap-2 justify-content-md-end">
+        <button class="btn btn-gradient rounded-pill px-4" type="button" data-bs-toggle="collapse" data-bs-target="#uploadCollapse">
+            <i class="bi bi-cloud-arrow-up"></i> Upload CSV
+        </button>
+        <button class="btn btn-outline-info rounded-pill px-4" type="button" data-bs-toggle="collapse" data-bs-target="#manualCollapse">
+            <i class="bi bi-pencil-square"></i> Manual Entry
+        </button>
+    </div>
+</div>
+
+<div class="collapse mb-4" id="uploadCollapse">
+    <div class="card card-glass p-0 border-0">
+        <div class="p-3 bg-dark bg-opacity-50 border-bottom border-secondary">
+            <h5 class="mb-0 fw-bold">Import Meter Readings</h5>
+        </div>
+        <div class="p-4 d-flex justify-content-between align-items-center flex-wrap gap-3">
+            <div>
+                <p class="text-white-50 mb-1">Make sure your CSV contains columns: <code>timestamp</code>, <code>kWh_consumed</code></p>
+                <small class="text-secondary">Expected timestamp format: <code>YYYY-MM-DD HH:MM:SS</code></small>
+            </div>
+            <form method="POST" enctype="multipart/form-data" class="d-flex gap-2">
+                {{ form.hidden_tag() }}
+                {{ form.csv_file(class="form-control form-control-glass", accept=".csv") }}
+                {{ form.submit(class="btn btn-primary") }}
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="collapse mb-4" id="manualCollapse">
+    <div class="card card-glass p-0 border-0">
+        <div class="p-3 bg-dark bg-opacity-50 border-bottom border-secondary">
+            <h5 class="mb-0 fw-bold"><i class="bi bi-pencil-square text-info"></i> Manual Reading Entry</h5>
+        </div>
+        <div class="p-4">
+            <form method="POST" action="{{ url_for('consumption.manual_entry') }}" class="row g-3 align-items-end">
+                {{ manual_form.hidden_tag() }}
+                <div class="col-md-5">
+                    {{ manual_form.timestamp.label(class="form-label small text-white-50") }}
+                    {{ manual_form.timestamp(class="form-control form-control-glass") }}
+                </div>
+                <div class="col-md-4">
+                    {{ manual_form.kwh_consumed.label(class="form-label small text-white-50") }}
+                    <div class="input-group">
+                        {{ manual_form.kwh_consumed(class="form-control form-control-glass", placeholder="e.g. 4.5") }}
+                        <span class="input-group-text bg-dark border-secondary text-white-50">kWh</span>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    {{ manual_form.submit(class="btn btn-info w-100 fw-bold") }}
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12 mb-4">
+        <div class="card card-glass p-0 border-0">
+            <div class="p-3 bg-dark bg-opacity-50 border-bottom border-secondary d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 fw-bold"><i class="bi bi-bar-chart-fill text-success"></i> Consumption Overview</h5>
+                <div class="btn-group btn-group-sm" role="group">
+                    <button type="button" class="btn btn-outline-info active" id="btnDaily">Daily</button>
+                    <button type="button" class="btn btn-outline-info" id="btnWeekly">Weekly</button>
+                    <button type="button" class="btn btn-outline-info" id="btnMonthly">Monthly</button>
+                </div>
+            </div>
+            <div class="p-4">
+                <div style="height: 400px; width: 100%; position: relative;">
+                    <!-- Loading Spinner -->
+                    <div id="chartLoading" class="position-absolute top-50 start-50 translate-middle text-center">
+                        <div class="spinner-border text-info" role="status"></div>
+                        <p class="text-white-50 mt-2">Aggregating Data...</p>
+                    </div>
+                    <!-- Chart Canvas -->
+                    <canvas id="consumptionChart" style="display: none;"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Local Chart.js -->
+<script src="{{ url_for('static', filename='js/chart.min.js') }}"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Fetch data from API endpoint
+    fetch('{{ url_for("consumption.consumption_data") }}')
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('chartLoading').style.display = 'none';
+            const ctx = document.getElementById('consumptionChart');
+            ctx.style.display = 'block';
+
+            if (!data.daily || data.daily.labels.length === 0) {
+                const noData = document.createElement('div');
+                noData.className = 'text-center text-white-50 mt-5 pt-5';
+                noData.innerHTML = '<i class="bi bi-inbox fs-1"></i><p class="mt-2">No consumption data found. Please upload a CSV.</p>';
+                ctx.parentElement.appendChild(noData);
+                ctx.style.display = 'none';
+                return;
+            }
+
+            const gradient = ctx.getContext('2d').createLinearGradient(0, 0, 0, 400);
+            gradient.addColorStop(0, 'rgba(56, 189, 248, 0.5)');
+            gradient.addColorStop(1, 'rgba(56, 189, 248, 0.0)');
+
+            let currentChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.daily.labels,
+                    datasets: [{
+                        label: 'Usage (kWh)',
+                        data: data.daily.data,
+                        backgroundColor: gradient,
+                        borderColor: '#38bdf8',
+                        borderWidth: 2,
+                        pointBackgroundColor: '#0284c7',
+                        pointBorderColor: '#fff',
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: '#0284c7',
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { labels: { color: '#f8fafc' } },
+                        tooltip: {
+                            backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                            titleColor: '#38bdf8',
+                            bodyColor: '#f8fafc',
+                            borderColor: 'rgba(255, 255, 255, 0.1)',
+                            borderWidth: 1,
+                            padding: 10,
+                            displayColors: false,
+                            callbacks: {
+                                label: function(context) { return context.parsed.y.toFixed(2) + ' kWh'; }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: { grid: { color: 'rgba(255, 255, 255, 0.05)', drawBorder: false }, ticks: { color: '#94a3b8' } },
+                        y: { beginAtZero: true, grid: { color: 'rgba(255, 255, 255, 0.05)', drawBorder: false }, ticks: { color: '#94a3b8', callback: function(value) { return value + ' kWh'; } } }
+                    }
+                }
+            });
+
+            const updateChart = (viewData) => {
+                if (viewData.current) {
+                    // Monthly comparison — grouped bar chart
+                    currentChart.config.type = 'bar';
+                    currentChart.data.labels = viewData.labels;
+                    currentChart.data.datasets = [
+                        {
+                            label: viewData.current.label,
+                            data: viewData.current.data,
+                            backgroundColor: 'rgba(56, 189, 248, 0.7)',
+                            borderColor: '#38bdf8',
+                            borderWidth: 1,
+                            borderRadius: 4
+                        },
+                        {
+                            label: viewData.previous.label,
+                            data: viewData.previous.data,
+                            backgroundColor: 'rgba(148, 163, 184, 0.4)',
+                            borderColor: '#94a3b8',
+                            borderWidth: 1,
+                            borderRadius: 4
+                        }
+                    ];
+                } else {
+                    currentChart.config.type = viewData === data.weekly ? 'line' : 'line';
+                    currentChart.data.labels = viewData.labels;
+                    currentChart.data.datasets = [{
+                        label: 'Usage (kWh)',
+                        data: viewData.data,
+                        backgroundColor: gradient,
+                        borderColor: '#38bdf8',
+                        borderWidth: 2,
+                        pointBackgroundColor: '#0284c7',
+                        fill: true,
+                        tension: 0.4
+                    }];
+                }
+                currentChart.update();
+            };
+
+            document.getElementById('btnDaily').addEventListener('click', (e) => {
+                document.querySelectorAll('.btn-outline-info').forEach(b => b.classList.remove('active')); e.target.classList.add('active');
+                updateChart(data.daily);
+            });
+            document.getElementById('btnWeekly').addEventListener('click', (e) => {
+                document.querySelectorAll('.btn-outline-info').forEach(b => b.classList.remove('active')); e.target.classList.add('active');
+                updateChart(data.weekly);
+            });
+            document.getElementById('btnMonthly').addEventListener('click', (e) => {
+                document.querySelectorAll('.btn-outline-info').forEach(b => b.classList.remove('active')); e.target.classList.add('active');
+                updateChart(data.monthly);
+            });
+        })
+        .catch(error => {
+            console.error('Error fetching data:', error);
+            document.getElementById('chartLoading').innerHTML = '<span class="text-danger">Error loading chart data.</span>';
+        });
+});
+</script>
+{% endblock %}
